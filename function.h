@@ -4,10 +4,27 @@
 #include <variable.h>
 
 PIDController hauteurMoteurCoupe;
+void StopMotors()
+{
+    //Moteur gauche
+    digitalWrite(IN1_D, LOW);
+    digitalWrite(IN2_D, LOW);
+
+    //Moteur droit
+    digitalWrite(IN3_G, LOW);
+    digitalWrite(IN4_G, LOW);
+
+    //Controle Vitesse
+    analogWrite(PWM_D, 0);
+    analogWrite(PWM_G, 0);
+}
 
 void Avencer(int vitesse)
 {
     Serial.println("Avencer");
+    
+    StopMotors();
+    delay(100);
     //Moteur gauche
     digitalWrite(IN1_D, LOW);
     digitalWrite(IN2_D, HIGH);
@@ -24,6 +41,9 @@ void Avencer(int vitesse)
 void Reculer(int vitesse)
 {
     Serial.println("Reculer");
+    
+    StopMotors();
+    delay(100);
     //Moteur gauche
     digitalWrite(IN1_D, HIGH);
     digitalWrite(IN2_D, LOW);
@@ -37,37 +57,44 @@ void Reculer(int vitesse)
     analogWrite(PWM_G, vitesse);
 }
 
-void Droite(int vitesseGauche, int vitesseDroite)
+void Droite(int vitesse)
 {
     Serial.println("Droite");
+
+    StopMotors();
+    delay(100);    
     //Moteur gauche
     digitalWrite(IN3_G, HIGH);
     digitalWrite(IN4_G, LOW);
 
     //Moteur droit
-    digitalWrite(IN3_G, LOW);
-    digitalWrite(IN4_G, HIGH);
+    digitalWrite(IN1_D, LOW);
+    digitalWrite(IN2_D, HIGH);
 
     //Controle Vitesse
-    analogWrite(PWM_D, vitesseDroite);
-    analogWrite(PWM_G, vitesseGauche);
+    analogWrite(PWM_D, vitesse);
+    analogWrite(PWM_G, vitesse);
 }
 
-void Gauche(int vitesseGauche, int vitesseDroite)
+void Gauche(int vitesse)
 {
     Serial.println("Gauche");
+    
+    StopMotors();
+    delay(100);
     //Moteur gauche
     digitalWrite(IN3_G, LOW);
     digitalWrite(IN4_G, HIGH);
 
     //Moteur droit
-    digitalWrite(IN3_G, HIGH);
-    digitalWrite(IN4_G, LOW);
+    digitalWrite(IN1_D, HIGH);
+    digitalWrite(IN2_D, LOW);
 
     //Controle Vitesse
-    analogWrite(PWM_D, vitesseDroite);
-    analogWrite(PWM_G, vitesseGauche);
+    analogWrite(PWM_D, vitesse);
+    analogWrite(PWM_G, vitesse);
 }
+
 
 int ScanCaptG()
 {
@@ -99,34 +126,27 @@ int ScanCaptD()
     return pulseIn(CAPT_D_ECHO, HIGH) / 58.0;
 }
 
-void changeDirection()
-{
-    Reculer(VITESSE_RECUL);
-    delay(500);
-    Droite(150, 150);
-    delay(500);
-}
 
 void changeDirectionDroite()
 {
     Reculer(VITESSE_RECUL);
-    delay(500);
-    Droite(150, 150);
-    delay(500);
+    delay(1000);
+    Droite(255);
+    delay(1000);
 }
 void changeDirectionGauche()
 {
     Reculer(VITESSE_RECUL);
-    delay(500);
-    Gauche(150, 150);
-    delay(500);
+    delay(1000);
+    Gauche(255);
+    delay(1000);
 }
 
 void changeDirectionMillieu()
 {
     Reculer(VITESSE_RECUL);
     delay(1000);
-    Gauche(150, 150);
+    Gauche(255);
     delay(1000);
 }
 
@@ -188,9 +208,6 @@ void checkHauteurCoupe()
     }
 }
 
-bool endstopCoupe(){
-    return digitalRead(ENDSTOP_C);
-}
 void monterHauteurCoupe(int vitesse)
 {
     Serial.println("Monter Coupe");
@@ -212,7 +229,86 @@ void encoder()
         postionEncodeur--;
     }
 }
+void debug_Endstop()
+{
+    Serial.print("D: ");
+    Serial.println(endstop_D);
+    Serial.print("G: ");
+    Serial.println(endstop_G);
+}
 
+void checkObstacle()
+{
+    if (obstacle_Endstop)
+    {
+        endstop_G = digitalRead(ENDSTOP_G);
+        endstop_D = digitalRead(ENDSTOP_D);
+
+        debug_Endstop();
+
+        if (!endstop_G && !endstop_D)
+        {
+            changeDirectionMillieu();
+        }
+        else if (!endstop_G)
+        {
+            changeDirectionDroite();
+        }
+        else if (!endstop_D)
+        {
+            changeDirectionGauche();
+        }
+        else
+        {
+        }
+        obstacle_Endstop = 0;
+        Avencer(VITESSE_AVENCE);
+    }
+    if (obstacleCapt(DISTANCE_OBSTACLE))
+    {
+        if (ScanCaptG() <= DISTANCE_OBSTACLE && ScanCaptM() <= DISTANCE_OBSTACLE && ScanCaptD() <= DISTANCE_OBSTACLE)
+        {
+            changeDirectionMillieu();
+        }
+        else if (ScanCaptG() <= DISTANCE_OBSTACLE)
+        {
+            changeDirectionDroite();
+        }
+        else if (ScanCaptM() <= DISTANCE_OBSTACLE)
+        {
+            changeDirectionMillieu();
+        }
+        else if (ScanCaptD() <= DISTANCE_OBSTACLE)
+        {
+            changeDirectionGauche();
+        }
+        Avencer(VITESSE_AVENCE);
+    }
+
+}
+
+void setCoupePosition(int pos){
+    if(postionEncodeur > pos){
+        //Decendre
+        decendreHauteurCoupe(VITESSE_HAUTEUR_COUPE);
+        Serial.println(postionEncodeur);
+        while (postionEncodeur > pos && postionEncodeur >= MAX_VALUE_ENCODER)
+        {}
+        stopHauteurCoupe();
+    }
+    else if(postionEncodeur < pos){
+        //Monter
+        monterHauteurCoupe(VITESSE_HAUTEUR_COUPE);
+        while (postionEncodeur < pos && digitalRead(ENDSTOP_C) == 0)
+        { 
+        }
+        stopHauteurCoupe();
+        postionEncodeur = 0;
+
+        
+
+    }else{}
+}
 void INIT()
 {
     //Capteur Ultrason
@@ -261,92 +357,9 @@ void INIT()
 
     Serial.begin(9600);
     Serial.println("START OK");
+
+    setCoupePosition(2000);  //Home
+    delay(200);
+    setCoupePosition(MAX_VALUE_ENCODER);
 }
 
-void debug_Endstop()
-{
-    Serial.print("D: ");
-    Serial.println(endstop_D);
-    Serial.print("G: ");
-    Serial.println(endstop_G);
-}
-
-void checkObstacle()
-{
-    if (obstacle_Endstop)
-    {
-        endstop_G = digitalRead(ENDSTOP_G);
-        endstop_D = digitalRead(ENDSTOP_D);
-
-        debug_Endstop();
-
-        if (!endstop_G && !endstop_D)
-        {
-            changeDirectionMillieu();
-        }
-        else if (!endstop_G)
-        {
-            changeDirectionDroite();
-        }
-        else if (!endstop_D)
-        {
-            changeDirectionGauche();
-        }
-        else
-        {
-        }
-        obstacle_Endstop = 0;
-    }
-    if (obstacleCapt(DISTANCE_OBSTACLE))
-    {
-        if (ScanCaptG() <= DISTANCE_OBSTACLE && ScanCaptM() <= DISTANCE_OBSTACLE && ScanCaptD() <= DISTANCE_OBSTACLE)
-        {
-            changeDirectionMillieu();
-        }
-        else if (ScanCaptG() <= DISTANCE_OBSTACLE)
-        {
-            changeDirectionDroite();
-        }
-        else if (ScanCaptM() <= DISTANCE_OBSTACLE)
-        {
-            changeDirectionMillieu();
-        }
-        else if (ScanCaptD() <= DISTANCE_OBSTACLE)
-        {
-            changeDirectionGauche();
-        }
-    }
-}
-
-void decendreDe(int d)
-{
-    int tmpPos = postionEncodeur;
-    decendreHauteurCoupe(150);
-    while (d + tmpPos > postionEncodeur)
-    {
-    }
-    stopHauteurCoupe();
-}
-
-void setCoupePosition(int pos){
-    if(postionEncodeur > pos){
-        //Decendre
-        decendreHauteurCoupe(VITESSE_HAUTEUR_COUPE);
-        Serial.println(postionEncodeur);
-        while (postionEncodeur > pos && postionEncodeur >= -330)
-        {}
-        stopHauteurCoupe();
-    }
-    else if(postionEncodeur < pos){
-        //Monter
-        monterHauteurCoupe(VITESSE_HAUTEUR_COUPE);
-        while (postionEncodeur < pos && digitalRead(ENDSTOP_C) == 0)
-        { 
-        }
-        stopHauteurCoupe();
-        postionEncodeur = 0;
-
-        
-
-    }else{}
-}
