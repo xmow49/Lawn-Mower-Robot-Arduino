@@ -1,22 +1,17 @@
-
 #include <function.h>
 
 void setup()
 {
-    INIT();
-    setCoupePosition(2000);  //Home
     delay(2000);
-    setCoupePosition(-370);
-    Serial.println(postionEncodeur);
+    INIT();
+    delay(5000);
+    Avencer(VITESSE_AVENCE);
+    
 }
 
 void loop()
-{
-
-    //Avencer(VITESSE_AVENCE);
-    //checkObstacle();
-    
-
-    delay(200);
+{ 
+    checkObstacle();
+    delay(100);
 
 }
