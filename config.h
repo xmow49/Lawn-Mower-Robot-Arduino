@@ -57,13 +57,12 @@
 
 #define VITESSE_AVENCE 200   //Valeur entre 0 et 255
 
-#define VITESSE_RECUL 150    //Valeur entre 0 et 255
+#define VITESSE_RECUL 255    //Valeur entre 0 et 255
 
-#define VITESSE_HAUTEUR_COUPE 100
+#define VITESSE_HAUTEUR_COUPE 100 //Valeur entre 0 et 255
+
+#define MAX_VALUE_ENCODER -200 // Valeur Maximal de l'encodeur
 
 //---------------Variables-------------
 
-bool obstacle_Endstop = 0;
-bool endstop_G = 1;
-bool endstop_D = 1;
 
